@@ -95,27 +95,14 @@ int showing_table() {
     total_uang = (total_row && total_row[0]) ? atoi(total_row[0]) : 0;
 
     // Update total uang pada tabel transaksi
-    char update_query[250];
-	snprintf(update_query, sizeof(update_query), "UPDATE transaksi SET total_uang = %d - IF((SELECT SUM(nominal) FROM pengeluaran WHERE id = (SELECT MAX(id) FROM transaksi)) IS NULL, 0, (SELECT SUM(nominal) FROM pengeluaran WHERE id = (SELECT MAX(id) FROM transaksi))) WHERE id = 1", total_uang);
-
+    char update_query[100];
+    snprintf(update_query, sizeof(update_query), "UPDATE transaksi SET total_uang = %d WHERE id = 1", total_uang);
 
     if (mysql_query(con, update_query)) {
         finish_with_error(con);
     }
 
-	// Query untuk mengambil nilai total_uang yang sudah diperbarui
-	char select_query[100];
-	snprintf(select_query, sizeof(select_query), "SELECT total_uang FROM transaksi WHERE id = 1");
-
-	if (mysql_query(con, select_query)) {
-	    finish_with_error(con);
-	}
-
-	MYSQL_RES *select_result = mysql_store_result(con);
-	MYSQL_ROW select_row = mysql_fetch_row(select_result);
-
-	// Menampilkan nilai total_uang yang sudah diperbarui
-	printf("\nTotal: Rp %s\n", select_row[0] ? select_row[0] : "NULL");
+    printf("\nTotal: Rp %d\n", total_uang);
     printf("\nTekan enter 2 kali untuk kembali...\n");
 
     // Membersihkan buffer stdin sebelum membaca input lagi
@@ -136,7 +123,6 @@ int showing_table() {
     // Kembali ke menu utama
     return hello();
 
-	mysql_free_result(select_result);
     mysql_free_result(total_result);
     mysql_free_result(result);
     mysql_close(con);
