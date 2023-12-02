@@ -3,9 +3,7 @@
 #include <stdlib.h>
 #include <conio.h>
 
-// Menyimpan total uang dan pengeluaran sebagai variabel global
 int total_uang = 0;
-int pengeluaran = 0;
 
 void finish_with_error(MYSQL * con) {
     fprintf(stderr, "%s\n", mysql_error(con));
@@ -88,21 +86,39 @@ int showing_table() {
         finish_with_error(con);
     }
 
-    MYSQL_RES * total_result = mysql_store_result(con);
+    MYSQL_RES *total_result = mysql_store_result(con);
     MYSQL_ROW total_row = mysql_fetch_row(total_result);
 
     // Mengambil total uang dari hasil query
     total_uang = (total_row && total_row[0]) ? atoi(total_row[0]) : 0;
 
+    // Query to get total pengeluaran
+    char pengeluaran_query[100];
+    snprintf(pengeluaran_query, sizeof(pengeluaran_query), "SELECT COALESCE(SUM(nominal), 0) FROM pengeluaran");
+
+    // Combine queries to calculate the final total
+    char final_query[300];
+    snprintf(final_query, sizeof(final_query), "SELECT (total - (%s)) AS final_total FROM (%s) AS uang, (%s) AS pengeluaran", pengeluaran_query, query, pengeluaran_query);
+
+    // Execute the final query
+    if (mysql_query(con, final_query)) {
+        finish_with_error(con);
+    }
+
+    MYSQL_RES *final_result = mysql_store_result(con);
+    MYSQL_ROW final_row = mysql_fetch_row(final_result);
+
+    int final_total = (final_row && final_row[0]) ? atoi(final_row[0]) : 0;
+
     // Update total uang pada tabel transaksi
     char update_query[100];
-    snprintf(update_query, sizeof(update_query), "UPDATE transaksi SET total_uang = %d WHERE id = 1", total_uang);
+    snprintf(update_query, sizeof(update_query), "UPDATE transaksi SET total_uang = %d WHERE id = 1", final_total);
 
     if (mysql_query(con, update_query)) {
         finish_with_error(con);
     }
 
-    printf("\nTotal: Rp %d\n", total_uang);
+    printf("\nTotal: Rp %d\n", final_total);
     printf("\nTekan enter 2 kali untuk kembali...\n");
 
     // Membersihkan buffer stdin sebelum membaca input lagi
@@ -193,7 +209,7 @@ int tambah_kolom() {
 
 // ubah fungsi ini
 int keluarkan_uang() {
-	MYSQL * con = mysql_init(NULL);
+    MYSQL *con = mysql_init(NULL);
 
     if (con == NULL) {
         fprintf(stderr, "mysql_init() failed\n");
@@ -203,6 +219,20 @@ int keluarkan_uang() {
     if (mysql_real_connect(con, "localhost", "root", "admin", "project_c", 0, NULL, 0) == NULL) {
         finish_with_error(con);
     }
+
+    // Query untuk mendapatkan total uang terkini dari tabel transaksi
+    char get_total_query[100];
+    snprintf(get_total_query, sizeof(get_total_query), "SELECT total_uang FROM transaksi WHERE id = 1");
+
+    if (mysql_query(con, get_total_query)) {
+        finish_with_error(con);
+    }
+
+    MYSQL_RES *total_result = mysql_store_result(con);
+    MYSQL_ROW total_row = mysql_fetch_row(total_result);
+
+    // Mengambil total uang dari hasil query
+    total_uang = (total_row && total_row[0]) ? atoi(total_row[0]) : 0;
 
     printf("Total uang saat ini: Rp %d\n", total_uang);
 
@@ -214,6 +244,7 @@ int keluarkan_uang() {
         printf("Maaf, uang yang diminta melebihi total uang yang tersedia.\n");
     } else {
         total_uang -= nominal;
+
         // Update total uang pada tabel transaksi
         char update_query[100];
         snprintf(update_query, sizeof(update_query), "UPDATE transaksi SET total_uang = %d WHERE id = 1", total_uang);
@@ -222,7 +253,7 @@ int keluarkan_uang() {
             finish_with_error(con);
         }
 
-        // Menyimpan detail transaksi ke dalam tabel riwayat_transaksi
+        // Menyimpan detail transaksi ke dalam tabel pengeluaran
         char insert_query[200];
         snprintf(insert_query, sizeof(insert_query), "INSERT INTO pengeluaran (tanggal, nominal) VALUES (NOW(), %d)", nominal);
 
@@ -230,7 +261,6 @@ int keluarkan_uang() {
             finish_with_error(con);
         }
 
-        pengeluaran += nominal;
         printf("Total uang berkurang menjadi: Rp %d\n", total_uang);
     }
 
@@ -254,8 +284,10 @@ int keluarkan_uang() {
     // Kembali ke menu utama
     return hello();
 
+    mysql_free_result(total_result);
     mysql_close(con);
 }
+
 
 int main() {
     int confirm;
