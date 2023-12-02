@@ -1,6 +1,7 @@
 #include <mysql.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <conio.h>
 
 void finish_with_error(MYSQL *con)
 {
@@ -9,7 +10,7 @@ void finish_with_error(MYSQL *con)
   exit(1);
 }
 
-int main(int argc, char **argv)
+int showing_table()
 {
   MYSQL *con = mysql_init(NULL);
 
@@ -38,7 +39,7 @@ int main(int argc, char **argv)
 
   MYSQL_ROW row;
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
-  int num_fields = mysql_num_fields(result);  
+  int num_fields = mysql_num_fields(result);
   int i;
 
   printf("TABEL TRANSAKSI MINGGUAN\n");
@@ -79,7 +80,7 @@ int main(int argc, char **argv)
     printf("+------------");
   }
   printf("+\n");
-  
+
   // Query to dynamically calculate and print total
   char query[200];
   snprintf(query, sizeof(query), "SELECT SUM(5000 * (%s", fields[2].name);
@@ -100,12 +101,24 @@ int main(int argc, char **argv)
   MYSQL_RES *total_result = mysql_store_result(con);
   MYSQL_ROW total_row = mysql_fetch_row(total_result);
 
-  printf("\nTotal: %s\n", total_row[0] ? total_row[0] : "NULL");
+  printf("\nTotal: Rp %s\n", total_row[0] ? total_row[0] : "NULL");
 
   mysql_free_result(total_result);
   mysql_free_result(result);
   mysql_close(con);
 
   exit(0);
+}
+
+int main() {
+  int confirm;
+  printf("SELAMAT DATANG DI SISTEM MANAJEMEN KAS KELAS\n\nPilih Menu:\n1. Lihat Tabel Transaksi Mingguan\n2. Masukkan Uang\n3. Keluarkan Uang\n4. Tambah Minggu\n\nSilakan pilih nomor menu yang diinginkan: ");
+  scanf("%d", &confirm);
+  
+  if (confirm == 1) {
+  	system("cls");
+  	showing_table();
+  }
+  return 0;
 }
 
