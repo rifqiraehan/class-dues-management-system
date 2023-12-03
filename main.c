@@ -151,7 +151,7 @@ int hello() {
 
     int confirm;
 
-    printf("SELAMAT DATANG DI SISTEM MANAJEMEN KAS KELAS\n\nPilih Menu:\n1. Lihat Tabel Transaksi Mingguan\n2. Masukkan Uang\n3. Keluarkan Uang\n4. Tambah Minggu\n\nSilakan pilih nomor menu yang diinginkan: ");
+    printf("SELAMAT DATANG DI SISTEM MANAJEMEN KAS KELAS\n\nPilih Menu:\n1. Lihat Tabel Transaksi Mingguan\n2. Masukkan Uang\n3. Keluarkan Uang\n4. Tambah Minggu\n5. Pengeluaran\n\nSilakan pilih nomor menu yang diinginkan: ");
     scanf("%d", & confirm);
 
     return confirm;
@@ -207,7 +207,114 @@ int tambah_kolom() {
     mysql_close(con);
 }
 
-// ubah fungsi ini
+int masukkan_uang() {
+    MYSQL *con = mysql_init(NULL);
+
+    if (con == NULL) {
+        fprintf(stderr, "mysql_init() failed\n");
+        exit(1);
+    }
+
+    if (mysql_real_connect(con, "localhost", "root", "admin", "project_c", 0, NULL, 0) == NULL) {
+        finish_with_error(con);
+    }
+
+    // Meminta input minggu
+    char mingguInput[10];
+    int mingguExists;
+
+    do {
+        printf("Minggu ke berapa? (e.g., minggu4): ");
+        scanf("%s", mingguInput);
+
+        // Memeriksa apakah nama minggu ada di tabel kasKelas
+        char checkMingguQuery[200];
+        snprintf(checkMingguQuery, sizeof(checkMingguQuery), "SHOW COLUMNS FROM kasKelas LIKE '%s'", mingguInput);
+
+        if (mysql_query(con, checkMingguQuery)) {
+            finish_with_error(con);
+        }
+
+        MYSQL_RES *checkMingguResult = mysql_store_result(con);
+        mingguExists = mysql_num_rows(checkMingguResult);
+
+        if (mingguExists == 0) {
+            // Jika nama minggu tidak ada di tabel kasKelas, beri tahu pengguna dan minta input lagi
+            printf("Nama minggu tidak ditemukan di tabel transaksi. Silakan coba lagi.\n\n");
+        }
+
+        mysql_free_result(checkMingguResult);
+
+    } while (mingguExists == 0);
+
+    // Meminta input NRP
+    int nrpExists;
+    int nrp;
+
+    do {
+        printf("NRP berapa? (Enter 2 kali untuk konfirmasi dan kembali): ");
+
+        if (scanf("%d", &nrp) != 1) {
+            // Jika input NRP tidak valid, beri tahu pengguna dan minta input lagi
+            printf("NRP tidak valid. Silakan coba lagi.\n");
+            hello();
+            return;
+        }
+
+        // Mengecek apakah NRP ada di kolom nrp tabel kasKelas
+        char checkNRPQuery[200];
+        snprintf(checkNRPQuery, sizeof(checkNRPQuery), "SELECT COUNT(*) FROM kasKelas WHERE nrp = %d", nrp);
+
+        if (mysql_query(con, checkNRPQuery)) {
+            finish_with_error(con);
+        }
+
+        MYSQL_RES *checkNRPResult = mysql_store_result(con);
+        MYSQL_ROW checkNRPRow = mysql_fetch_row(checkNRPResult);
+        nrpExists = atoi(checkNRPRow[0]);
+
+        if (nrpExists == 0) {
+            // Jika NRP tidak ada di kolom nrp tabel kasKelas, beri tahu pengguna dan minta input lagi
+            printf("NRP tidak ditemukan di tabel transaksi. Silakan coba lagi.\n\n");
+        }
+
+        mysql_free_result(checkNRPResult);
+
+    } while (nrpExists == 0);
+
+    // Update tabel kasKelas
+    char updateQuery[200];
+    snprintf(updateQuery, sizeof(updateQuery), "UPDATE kasKelas SET %s = 1 WHERE nrp = %d", mingguInput, nrp);
+
+    if (mysql_query(con, updateQuery)) {
+        finish_with_error(con);
+    }
+
+    printf("Data berhasil dimasukkan!\n");
+    printf("\nTekan enter 2 kali untuk kembali...\n");
+
+    // Membersihkan buffer stdin sebelum membaca input lagi
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+
+    // Menunggu dua Enter untuk kembali ke menu utama
+    int enterCount = 0;
+    while (enterCount < 2) {
+        char c = getchar();
+        if (c == '\n') {
+            enterCount++;
+        } else {
+            enterCount = 0; // Reset jika karakter selain Enter ditemukan
+        }
+    }
+
+    // Kembali ke menu utama
+    return hello();
+
+    // Membersihkan hasil query
+    mysql_close(con);
+}
+
 int keluarkan_uang() {
     MYSQL *con = mysql_init(NULL);
 
@@ -288,6 +395,105 @@ int keluarkan_uang() {
     mysql_close(con);
 }
 
+int pengeluaran() {
+    MYSQL *con = mysql_init(NULL);
+
+    if (con == NULL) {
+        fprintf(stderr, "mysql_init() failed\n");
+        exit(1);
+    }
+
+    if (mysql_real_connect(con, "localhost", "root", "admin", "project_c", 0, NULL, 0) == NULL) {
+        finish_with_error(con);
+    }
+
+    // Query untuk mendapatkan data pengeluaran
+    if (mysql_query(con, "SELECT * FROM pengeluaran")) {
+        finish_with_error(con);
+    }
+
+    MYSQL_RES *result = mysql_store_result(con);
+
+    if (result == NULL) {
+        finish_with_error(con);
+    }
+
+    MYSQL_ROW row;
+    MYSQL_FIELD *fields = mysql_fetch_fields(result);
+    int num_fields = mysql_num_fields(result);
+    int i;
+
+    // Print header
+    printf("TABEL PENGELUARAN\n");
+
+    for (i = 0; i < num_fields; i++) {
+        printf("+------------");
+    }
+    printf("+\n");
+
+    for (i = 0; i < mysql_num_fields(result); i++) {
+        printf("| %-10s ", fields[i].name);
+    }
+    printf("|\n");
+
+    // Print separator line
+    for (i = 0; i < num_fields; i++) {
+        printf("+------------");
+    }
+    printf("+\n");
+
+    // Print rows
+    while ((row = mysql_fetch_row(result))) {
+        for (i = 0; i < num_fields; i++) {
+            printf("| %-10s ", row[i] ? row[i] : "NULL");
+        }
+        printf("|\n");
+    }
+
+    // Print bottom line
+    for (i = 0; i < num_fields; i++) {
+        printf("+------------");
+    }
+    printf("+\n");
+
+    // Query untuk mendapatkan total pengeluaran
+    if (mysql_query(con, "SELECT COALESCE(SUM(nominal), 0) AS total_pengeluaran FROM pengeluaran")) {
+        finish_with_error(con);
+    }
+
+    MYSQL_RES *total_result = mysql_store_result(con);
+    MYSQL_ROW total_row = mysql_fetch_row(total_result);
+
+    // Mengambil total pengeluaran dari hasil query
+    int total_pengeluaran = (total_row && total_row[0]) ? atoi(total_row[0]) : 0;
+
+    printf("\nTotal Pengeluaran: Rp %d\n", total_pengeluaran);
+
+    // Membersihkan hasil query
+    mysql_free_result(result);
+    mysql_free_result(total_result);
+    mysql_close(con);
+
+    printf("\nTekan enter 2 kali untuk kembali...\n");
+
+    // Membersihkan buffer stdin sebelum membaca input lagi
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+
+    // Menunggu dua Enter untuk kembali ke menu utama
+    int enterCount = 0;
+    while (enterCount < 2) {
+        char c = getchar();
+        if (c == '\n') {
+            enterCount++;
+        } else {
+            enterCount = 0; // Reset jika karakter selain Enter ditemukan
+        }
+    }
+
+    // Kembali ke menu utama
+    return hello();
+}
 
 int main() {
     int confirm;
@@ -299,6 +505,12 @@ int main() {
             system("cls");
             // Memanggil showing_table() dan menyimpan nilai yang dikembalikan
             confirm = showing_table();
+
+            break;
+        case 2:
+            system("cls");
+            // Memanggil masukkan_uang() dan menyimpan nilai yang dikembalikan
+            confirm = masukkan_uang();
 
             break;
         case 3:
@@ -313,10 +525,16 @@ int main() {
             confirm = tambah_kolom();
 
             break;
+        case 5:
+        system("cls");
+        // Memanggil pengeluaran() dan menyimpan nilai yang dikembalikan
+        confirm = pengeluaran();
+
+        break;
         default:
             break;
         }
-    } while (confirm == 1 || confirm == 2 || confirm == 3 || confirm == 4);
+    } while (confirm == 1 || confirm == 2 || confirm == 3 || confirm == 4 || confirm == 5);
 
     return 0;
 }
