@@ -151,7 +151,7 @@ int menu_utama() {
     int confirm;
 
     printf("SELAMAT DATANG DI SISTEM MANAJEMEN KAS KELAS\n\nPilih Menu:\n1. Lihat Tabel Transaksi Mingguan\n2. Masukkan Uang\n3. Keluarkan Uang\n4. Tambah Minggu\n5. Pengeluaran\n\nSilakan pilih nomor menu yang diinginkan: ");
-    scanf("%d", & confirm);
+    scanf("%d", &confirm);
 
     return confirm;
 }
@@ -189,7 +189,7 @@ int uang_masuk() {
 
     do {
         printf("Minggu ke berapa? (e.g., minggu4): ");
-        scanf("%s", mingguInput);
+        scanf("%s", &mingguInput);
 
         char checkMingguQuery[200];
         snprintf(checkMingguQuery, sizeof(checkMingguQuery), "SHOW COLUMNS FROM kasKelas LIKE '%s'", mingguInput);
@@ -220,7 +220,7 @@ int uang_masuk() {
 
             if (scanf("%d", &nrp) != 1) {
                 char response[2];
-                scanf("%1s", response);
+                scanf("%1s", &response);
 
                 if (response[0] == 'n' || response[0] == 'N') {
                     return menu_utama();
