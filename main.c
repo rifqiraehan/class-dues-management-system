@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <conio.h>
+#include <string.h>
 
 int total_uang = 0;
 
@@ -161,7 +162,7 @@ int penambahan_kolom() {
 
     char nama_kolom[50];
     printf("Masukkan nama kolom yang ingin ditambahkan: ");
-    scanf("%s", nama_kolom);
+    scanf("%s", &nama_kolom);
 
     char query[100];
     snprintf(query, sizeof(query), "ALTER TABLE kasKelas ADD COLUMN %s tinyint(1) NOT NULL DEFAULT 0", nama_kolom);
